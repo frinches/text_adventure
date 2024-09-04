@@ -7,330 +7,297 @@ import (
 	"strings"
 )
 
-type GameState struct {
-	CurrentScene string
-	Inventory    []string
-	Health       int
-	Completed    bool
-}
-
 type Game struct {
-	state *GameState
-	scenes map[string]*Scene
+	scanner *bufio.Scanner
+	player  *Player
 }
 
-type Scene struct {
-	Description string
-	Choices     []Choice
-}
-
-type Choice struct {
-	Text    string
-	Next    string
-	Effect  func(*GameState)
+type Player struct {
+	Name  string
+	Health int
+	Items  []string
 }
 
 func NewGame() *Game {
-	game := &Game{
-		state: &GameState{
-			CurrentScene: "start",
-			Health:       100,
-			Inventory:    []string{},
+	return &Game{
+		scanner: bufio.NewScanner(os.Stdin),
+		player: &Player{
+			Health: 100,
+			Items:  []string{},
 		},
-		scenes: make(map[string]*Scene),
-	}
-	
-	game.initializeScenes()
-	return game
-}
-
-func (g *Game) initializeScenes() {
-	// Start scene
-	g.scenes["start"] = &Scene{
-		Description: "You stand at the edge of a mysterious forest. Two paths diverge before you.",
-		Choices: []Choice{
-			{
-				Text: "Take the left path - it looks well-traveled",
-				Next: "left_path",
-			},
-			{
-				Text: "Take the right path - it's overgrown but intriguing",
-				Next: "right_path",
-			},
-		},
-	}
-	
-	// Left path scenes
-	g.scenes["left_path"] = &Scene{
-		Description: "You follow the left path and find an ancient stone bridge crossing a river.",
-		Choices: []Choice{
-			{
-				Text: "Cross the bridge carefully",
-				Next: "bridge_crossing",
-			},
-			{
-				Text: "Search the riverbank for items",
-				Next: "river_search",
-			},
-		},
-	}
-	
-	g.scenes["bridge_crossing"] = &Scene{
-		Description: "As you cross the bridge, you notice it's unstable. Suddenly, a plank breaks!",
-		Choices: []Choice{
-			{
-				Text: "Jump to the other side",
-				Next: "bridge_success",
-				Effect: func(gs *GameState) {
-					gs.Health -= 10
-					fmt.Println("You made it but took 10 damage!")
-				},
-			},
-			{
-				Text: "Carefully navigate around the broken plank",
-				Next: "bridge_success",
-			},
-		},
-	}
-	
-	g.scenes["bridge_success"] = &Scene{
-		Description: "You successfully cross the bridge and find a friendly village ahead.",
-		Choices: []Choice{
-			{
-				Text: "Enter the village",
-				Next: "village",
-			},
-		},
-	}
-	
-	g.scenes["river_search"] = &Scene{
-		Description: "You search the riverbank and find a shiny key half-buried in the mud.",
-		Choices: []Choice{
-			{
-				Text: "Take the key and continue",
-				Next: "bridge_crossing",
-				Effect: func(gs *GameState) {
-					gs.Inventory = append(gs.Inventory, "rusty_key")
-					fmt.Println("You added a rusty key to your inventory!")
-				},
-			},
-		},
-	}
-	
-	// Right path scenes
-	g.scenes["right_path"] = &Scene{
-		Description: "The overgrown path leads to a dark cave entrance. Strange sounds echo from within.",
-		Choices: []Choice{
-			{
-				Text: "Enter the cave",
-				Next: "cave_entrance",
-			},
-			{
-				Text: "Search around the cave entrance",
-				Next: "cave_search",
-			},
-		},
-	}
-	
-	g.scenes["cave_entrance"] = &Scene{
-		Description: "Inside the cave, you find two tunnels. One glows faintly, the other is pitch black.",
-		Choices: []Choice{
-			{
-				Text: "Take the glowing tunnel",
-				Next: "glowing_tunnel",
-			},
-			{
-				Text: "Take the dark tunnel",
-				Next: "dark_tunnel",
-			},
-		},
-	}
-	
-	g.scenes["glowing_tunnel"] = &Scene{
-		Description: "The glowing tunnel leads to a chamber filled with magical crystals. A treasure chest sits in the center.",
-		Choices: []Choice{
-			{
-				Text: "Open the chest",
-				Next: "treasure_chest",
-			},
-			{
-				Text: "Take some crystals and leave",
-				Next: "crystal_escape",
-				Effect: func(gs *GameState) {
-					gs.Inventory = append(gs.Inventory, "magic_crystal")
-					fmt.Println("You took a magic crystal!")
-				},
-			},
-		},
-	}
-	
-	g.scenes["treasure_chest"] = &Scene{
-		Description: "The chest is locked. You need a key to open it.",
-		Choices: []Choice{
-			{
-				Text: "Try to open it anyway",
-				Next: "chest_failed",
-			},
-			{
-				Text: "Leave the chest",
-				Next: "crystal_escape",
-			},
-		},
-	}
-	
-	g.scenes["chest_failed"] = &Scene{
-		Description: "The chest won't budge. It's securely locked.",
-		Choices: []Choice{
-			{
-				Text: "Continue exploring",
-				Next: "crystal_escape",
-			},
-		},
-	}
-	
-	g.scenes["crystal_escape"] = &Scene{
-		Description: "You escape the cave with your findings and find yourself back at the forest edge, wiser and richer.",
-		Choices: []Choice{
-			{
-				Text: "End your adventure",
-				Next: "end",
-				Effect: func(gs *GameState) {
-					gs.Completed = true
-				},
-			},
-		},
-	}
-	
-	g.scenes["dark_tunnel"] = &Scene{
-		Description: "The dark tunnel leads to a dead end. Bats suddenly swarm around you!",
-		Choices: []Choice{
-			{
-				Text: "Fight off the bats",
-				Next: "bat_fight",
-				Effect: func(gs *GameState) {
-					gs.Health -= 20
-					fmt.Println("You fought bravely but took 20 damage from the bats!")
-				},
-			},
-			{
-				Text: "Run back to the entrance",
-				Next: "cave_entrance",
-			},
-		},
-	}
-	
-	g.scenes["bat_fight"] = &Scene{
-		Description: "After fighting the bats, you find a small alcove with an old map.",
-		Choices: []Choice{
-			{
-				Text: "Take the map and continue",
-				Next: "crystal_escape",
-				Effect: func(gs *GameState) {
-					gs.Inventory = append(gs.Inventory, "old_map")
-					fmt.Println("You found an old map!")
-				},
-			},
-		},
-	}
-	
-	g.scenes["cave_search"] = &Scene{
-		Description: "Around the cave entrance, you find some edible berries and a sturdy stick.",
-		Choices: []Choice{
-			{
-				Text: "Take the berries and stick, then enter the cave",
-				Next: "cave_entrance",
-				Effect: func(gs *GameState) {
-					gs.Inventory = append(gs.Inventory, "berries", "sturdy_stick")
-					gs.Health += 15
-					fmt.Println("You ate some berries (+15 health) and took a sturdy stick!")
-				},
-			},
-		},
-	}
-	
-	g.scenes["village"] = &Scene{
-		Description: "The villagers welcome you! They offer you shelter and tell you about the forest's secrets.",
-		Choices: []Choice{
-			{
-				Text: "Stay in the village and end your adventure",
-				Next: "end",
-				Effect: func(gs *GameState) {
-					gs.Completed = true
-				},
-			},
-		},
-	}
-	
-	// End scene
-	g.scenes["end"] = &Scene{
-		Description: "Your adventure comes to an end. You reflect on your journey...",
-		Choices: []Choice{
-			{
-				Text: "Play again",
-				Next: "start",
-				Effect: func(gs *GameState) {
-					// Reset game state
-					gs.CurrentScene = "start"
-					gs.Inventory = []string{}
-					gs.Health = 100
-					gs.Completed = false
-				},
-			},
-			{
-				Text: "Quit game",
-				Next: "quit",
-			},
-		},
-	}
-	
-	g.scenes["quit"] = &Scene{
-		Description: "Thanks for playing!",
-		Choices:     []Choice{},
 	}
 }
 
 func (g *Game) Start() {
-	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Println("=== WELCOME TO THE FOREST ADVENTURE ===")
+	fmt.Print("Enter your name: ")
+	g.scanner.Scan()
+	g.player.Name = g.scanner.Text()
 	
-	for !g.state.Completed && g.state.CurrentScene != "quit" {
-		currentScene := g.scenes[g.state.CurrentScene]
-		
-		// Display current status
-		fmt.Printf("\n--- Health: %d | Inventory: %v ---\n", g.state.Health, g.state.Inventory)
-		fmt.Println(currentScene.Description)
-		fmt.Println("\nWhat do you do?")
-		
-		// Display choices
-		for i, choice := range currentScene.Choices {
-			fmt.Printf("%d. %s\n", i+1, choice.Text)
+	fmt.Printf("\nHello, %s! Your adventure begins...\n\n", g.player.Name)
+	g.forestPath()
+}
+
+func (g *Game) getUserInput(prompt string) string {
+	fmt.Print(prompt)
+	g.scanner.Scan()
+	return strings.TrimSpace(g.scanner.Text())
+}
+
+func (g *Game) forestPath() {
+	fmt.Println("You find yourself at a crossroad in a dense forest.")
+	fmt.Println("1. Take the left path - leads to a dark cave")
+	fmt.Println("2. Take the right path - leads to a river")
+	fmt.Println("3. Go straight ahead - deeper into the forest")
+	
+	choice := g.getUserInput("Choose your path (1-3): ")
+	
+	switch choice {
+	case "1":
+		g.darkCave()
+	case "2":
+		g.riverPath()
+	case "3":
+		g.deepForest()
+	default:
+		fmt.Println("Invalid choice! Please choose 1, 2, or 3.")
+		g.forestPath()
+	}
+}
+
+func (g *Game) darkCave() {
+	fmt.Println("\nYou enter a dark, damp cave.")
+	fmt.Println("You see two tunnels ahead.")
+	fmt.Println("1. Take the narrow tunnel on the left")
+	fmt.Println("2. Take the wide tunnel on the right")
+	fmt.Println("3. Go back to the forest")
+	
+	choice := g.getUserInput("What do you do? (1-3): ")
+	
+	switch choice {
+	case "1":
+		g.treasureRoom()
+	case "2":
+		g.dragonEncounter()
+	case "3":
+		fmt.Println("You return to the forest crossroad.")
+		g.forestPath()
+	default:
+		fmt.Println("Invalid choice!")
+		g.darkCave()
+	}
+}
+
+func (g *Game) riverPath() {
+	fmt.Println("\nYou arrive at a fast-flowing river.")
+	fmt.Println("A small boat is tied to a nearby tree.")
+	fmt.Println("1. Take the boat across the river")
+	fmt.Println("2. Follow the river downstream")
+	fmt.Println("3. Go back to the forest")
+	
+	choice := g.getUserInput("What do you do? (1-3): ")
+	
+	switch choice {
+	case "1":
+		g.mysteriousIsland()
+	case "2":
+		g.ancientTemple()
+	case "3":
+		fmt.Println("You return to the forest crossroad.")
+		g.forestPath()
+	default:
+		fmt.Println("Invalid choice!")
+		g.riverPath()
+	}
+}
+
+func (g *Game) deepForest() {
+	fmt.Println("\nYou venture deeper into the forest.")
+	fmt.Println("You encounter a friendly elf who offers you help.")
+	fmt.Println("1. Accept the elf's help")
+	fmt.Println("2. Politely decline and continue alone")
+	fmt.Println("3. Ask the elf about the forest")
+	
+	choice := g.getUserInput("What do you do? (1-3): ")
+	
+	switch choice {
+	case "1":
+		g.elfHelp()
+	case "2":
+		g.lostInForest()
+	case "3":
+		g.elfInformation()
+	default:
+		fmt.Println("Invalid choice!")
+		g.deepForest()
+	}
+}
+
+func (g *Game) treasureRoom() {
+	fmt.Println("\nYou squeeze through the narrow tunnel and find a hidden treasure room!")
+	fmt.Println("Gold coins and jewels sparkle in the dim light.")
+	g.player.Items = append(g.player.Items, "Treasure Chest")
+	fmt.Println("🎉 YOU FOUND THE TREASURE! YOU WIN! 🎉")
+	g.endGame()
+}
+
+func (g *Game) dragonEncounter() {
+	fmt.Println("\nYou enter a large chamber and encounter a sleeping dragon!")
+	fmt.Println("1. Try to sneak past the dragon")
+	fmt.Println("2. Attack the dragon")
+	fmt.Println("3. Retreat quietly")
+	
+	choice := g.getUserInput("What do you do? (1-3): ")
+	
+	switch choice {
+	case "1":
+		if len(g.player.Items) > 0 {
+			fmt.Println("You successfully sneak past the dragon and find the treasure!")
+			g.treasureRoom()
+		} else {
+			fmt.Println("The dragon wakes up! You barely escape with your life.")
+			g.player.Health -= 30
+			fmt.Printf("Health remaining: %d\n", g.player.Health)
+			g.darkCave()
 		}
-		
-		// Get player input
-		fmt.Print("\nEnter your choice (1-", len(currentScene.Choices), "): ")
-		scanner.Scan()
-		input := strings.TrimSpace(scanner.Text())
-		
-		// Validate input
-		var choiceIndex int
-		_, err := fmt.Sscanf(input, "%d", &choiceIndex)
-		if err != nil || choiceIndex < 1 || choiceIndex > len(currentScene.Choices) {
-			fmt.Println("Invalid choice! Please enter a number between 1 and", len(currentScene.Choices))
-			continue
+	case "2":
+		fmt.Println("You attack the dragon but it's too powerful!")
+		fmt.Println("💀 The dragon defeats you. GAME OVER!")
+		os.Exit(0)
+	case "3":
+		fmt.Println("You retreat back to the cave entrance.")
+		g.darkCave()
+	default:
+		fmt.Println("Invalid choice!")
+		g.dragonEncounter()
+	}
+}
+
+func (g *Game) mysteriousIsland() {
+	fmt.Println("\nYou cross the river and discover a mysterious island!")
+	fmt.Println("An ancient wizard approaches you.")
+	fmt.Println("1. Talk to the wizard")
+	fmt.Println("2. Explore the island")
+	fmt.Println("3. Return to the river")
+	
+	choice := g.getUserInput("What do you do? (1-3): ")
+	
+	switch choice {
+	case "1":
+		g.wizardEncounter()
+	case "2":
+		fmt.Println("You explore the island and find a magical amulet!")
+		g.player.Items = append(g.player.Items, "Magical Amulet")
+		fmt.Println("You return to the river.")
+		g.riverPath()
+	case "3":
+		fmt.Println("You return to the river.")
+		g.riverPath()
+	default:
+		fmt.Println("Invalid choice!")
+		g.mysteriousIsland()
+	}
+}
+
+func (g *Game) ancientTemple() {
+	fmt.Println("\nFollowing the river, you discover an ancient temple!")
+	fmt.Println("The temple doors are sealed with magical runes.")
+	fmt.Println("1. Try to decipher the runes")
+	fmt.Println("2. Look for another entrance")
+	fmt.Println("3. Return to the river")
+	
+	choice := g.getUserInput("What do you do? (1-3): ")
+	
+	switch choice {
+	case "1":
+		if contains(g.player.Items, "Magical Amulet") {
+			fmt.Println("The amulet glows and the temple doors open!")
+			fmt.Println("Inside, you find ancient knowledge and wisdom.")
+			fmt.Println("🧠 YOU GAINED ANCIENT WISDOM! YOU WIN! 🧠")
+			g.endGame()
+		} else {
+			fmt.Println("The runes are too complex to understand without magical help.")
+			fmt.Println("You return to the river.")
+			g.riverPath()
 		}
-		
-		// Execute choice
-		selectedChoice := currentScene.Choices[choiceIndex-1]
-		if selectedChoice.Effect != nil {
-			selectedChoice.Effect(g.state)
-		}
-		g.state.CurrentScene = selectedChoice.Next
-		
-		// Check for game over
-		if g.state.Health <= 0 {
-			fmt.Println("\n💀 Your health has reached zero! Game Over.")
-			break
+	case "2":
+		fmt.Println("You find a hidden passage but it's blocked by rubble.")
+		fmt.Println("You return to the river.")
+		g.riverPath()
+	case "3":
+		fmt.Println("You return to the river.")
+		g.riverPath()
+	default:
+		fmt.Println("Invalid choice!")
+		g.ancientTemple()
+	}
+}
+
+func (g *Game) elfHelp() {
+	fmt.Println("\nThe elf gives you a magical compass and a healing potion!")
+	g.player.Items = append(g.player.Items, "Magical Compass", "Healing Potion")
+	g.player.Health = 100
+	fmt.Println("Your health is restored to 100!")
+	fmt.Println("The elf guides you to safety.")
+	fmt.Println("🌟 YOU COMPLETED YOUR JOURNEY SAFELY! YOU WIN! 🌟")
+	g.endGame()
+}
+
+func (g *Game) lostInForest() {
+	fmt.Println("\nYou continue alone but soon get lost in the dense forest.")
+	fmt.Println("Days pass as you wander without direction...")
+	fmt.Println("💀 You succumb to hunger and exhaustion. GAME OVER!")
+	os.Exit(0)
+}
+
+func (g *Game) elfInformation() {
+	fmt.Println("\nThe elf tells you about a hidden treasure in the dark cave.")
+	fmt.Println("He also warns you about a dragon guarding it.")
+	fmt.Println("You thank the elf and continue your journey.")
+	g.player.Items = append(g.player.Items, "Cave Map")
+	g.deepForest()
+}
+
+func (g *Game) wizardEncounter() {
+	fmt.Println("\nThe wizard offers to teach you magic in exchange for help.")
+	fmt.Println("1. Accept the wizard's offer")
+	fmt.Println("2. Decline and explore more")
+	fmt.Println("3. Ask about the island's secrets")
+	
+	choice := g.getUserInput("What do you do? (1-3): ")
+	
+	switch choice {
+	case "1":
+		fmt.Println("You spend years learning magic from the wizard.")
+		fmt.Println("🔮 YOU BECOME A POWERFUL WIZARD! YOU WIN! 🔮")
+		g.endGame()
+	case "2":
+		fmt.Println("You decline and continue exploring the island.")
+		g.mysteriousIsland()
+	case "3":
+		fmt.Println("The wizard reveals the island's ancient magic but warns you to leave.")
+		fmt.Println("You take his advice and return to the river.")
+		g.riverPath()
+	default:
+		fmt.Println("Invalid choice!")
+		g.wizardEncounter()
+	}
+}
+
+func (g *Game) endGame() {
+	fmt.Printf("\n=== GAME COMPLETED ===\n")
+	fmt.Printf("Player: %s\n", g.player.Name)
+	fmt.Printf("Final Health: %d\n", g.player.Health)
+	fmt.Printf("Items Collected: %v\n", g.player.Items)
+	fmt.Println("Thanks for playing!")
+	os.Exit(0)
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
 		}
 	}
-	
-	fmt.Println("\nGame ended. Thanks for playing!")
+	return false
 }
