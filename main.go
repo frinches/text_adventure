@@ -6,6 +6,10 @@ import (
 )
 
 func main() {
+	fmt.Println("=== THE FORGOTTEN TEMPLE ADVENTURE ===")
+	fmt.Println("Welcome, brave adventurer!")
+	fmt.Println("Your quest begins now...\n")
+	
 	game := NewGame()
 	game.Start()
 }
