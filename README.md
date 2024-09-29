@@ -1,11 +1,7 @@
-# Text-Based Adventure Game
-
-A simple interactive text-based adventure game written in Go with multiple story paths and endings.
-
-## How to Use
+## How to Use the Text-Based Adventure Game
 
 ### Prerequisites
-- Go 1.21 or later installed on your system
+- Go 1.16 or higher installed on your system
 
 ### Installation & Running
 
@@ -15,54 +11,61 @@ A simple interactive text-based adventure game written in Go with multiple story
    cd text-adventure-game
    ```
 
-2. **Create the game files:**
-   Copy the provided code into three separate files:
+2. **Create the files:**
+   Copy the code above into the respective files:
    - `main.go`
    - `game.go`
+   - `scene.go`
    - `go.mod`
 
 3. **Initialize and run the game:**
    ```bash
-   go mod tidy
+   go mod init text-adventure-game
    go run .
    ```
 
-### Game Features
-
-- **Multiple Story Paths**: Choose different paths that lead to unique adventures
-- **Inventory System**: Collect items that can help you later in the game
-- **Health System**: Your choices affect your character's health
-- **Multiple Endings**: Discover different winning and losing scenarios
-- **Interactive Choices**: Make decisions by entering numbers (1, 2, 3, etc.)
-
 ### How to Play
 
-1. **Start the game** by running the program
-2. **Enter your character's name** when prompted
-3. **Read the story descriptions** carefully
-4. **Make choices** by entering the corresponding number
-5. **Explore different paths** to discover all possible endings
-6. **Collect items** that might help you in future encounters
+1. **Starting the Game:**
+   - Run the program and you'll begin at the temple entrance
+   - Read the description of your current location
+
+2. **Making Choices:**
+   - You'll be presented with numbered options (1, 2, 3, etc.)
+   - Type the number of your choice and press Enter
+   - Each choice leads to different story paths and endings
+
+3. **Game Features:**
+   - Multiple branching story paths
+   - 8 different endings
+   - Exploration-based gameplay
+   - Simple text-based interface
+
+4. **Game Endings:**
+   The game has multiple endings including:
+   - Becoming a forest guardian
+   - Discovering magical powers
+   - Ruling hidden cities
+   - And more!
 
 ### Game Structure
 
-The game starts in a forest with three initial paths:
-- **Left Path**: Leads to a dark cave with treasure and dangers
-- **Right Path**: Leads to a river with mystical discoveries
-- **Straight Path**: Leads deeper into the forest with magical encounters
+- **main.go**: Entry point of the application
+- **game.go**: Contains game logic and scene management
+- **scene.go**: Defines scenes and player choices
+- **go.mod**: Go module configuration
 
-### Tips for Success
+### Extending the Game
 
-- Pay attention to item descriptions - they might be useful later
-- Some choices require specific items to succeed
-- Explore all paths to experience the full story
-- Your health matters in certain encounters
+You can easily add more scenes and story paths by:
+1. Adding new scenes in the `setupScenes()` method in `game.go`
+2. Creating new choices that link to your scenes
+3. Adding new ending conditions
 
-### Replaying
+### Troubleshooting
 
-To play again with different choices, simply run the program again:
-```bash
-go run .
-```
+- If you get module errors, run `go mod tidy`
+- Ensure all files are in the same directory
+- Make sure you're using a compatible Go version
 
-Enjoy your adventure through the mystical forest!
+Enjoy your adventure in the Forgotten Temple!
